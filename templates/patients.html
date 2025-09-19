@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+
+{% block title %}Patients - Patient Demographic System{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1><i class="fas fa-users"></i> Patients</h1>
+            <a href="{{ url_for('register_patient') }}" class="btn btn-primary">
+                <i class="fas fa-user-plus"></i> Register New Patient
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                {% if patients %}
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Patient ID</th>
+                                    <th>Name</th>
+                                    <th>Date of Birth</th>
+                                    <th>Gender</th>
+                                    <th>Phone</th>
+                                    <th>Location</th>
+                                    <th>Registered</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for patient in patients %}
+                                    <tr>
+                                        <td>{{ patient.patient_id }}</td>
+                                        <td>{{ patient.first_name }} {{ patient.last_name }}</td>
+                                        <td>{{ patient.date_of_birth.strftime('%Y-%m-%d') }}</td>
+                                        <td>{{ patient.gender }}</td>
+                                        <td>{{ patient.phone }}</td>
+                                        <td>{{ patient.location.name }}</td>
+                                        <td>{{ patient.created_at.strftime('%Y-%m-%d') }}</td>
+                                        <td>
+                                            <a href="{{ url_for('patient_details', patient_id=patient.patient_id) }}" 
+                                               class="btn btn-sm btn-primary">View</a>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-users fa-3x text-muted mb-3"></i>
+                        <h5 class="text-muted">No patients registered yet</h5>
+                        <p class="text-muted">Start by registering your first patient</p>
+                        <a href="{{ url_for('register_patient') }}" class="btn btn-primary">
+                            <i class="fas fa-user-plus"></i> Register Patient
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

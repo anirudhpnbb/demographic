@@ -1,0 +1,163 @@
+{% extends "base.html" %}
+
+{% block title %}{{ patient.first_name }} {{ patient.last_name }} - Patient Details{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h4><i class="fas fa-user"></i> Patient Details</h4>
+                <span class="badge bg-primary fs-6">{{ patient.patient_id }}</span>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <p><strong>Name:</strong> {{ patient.first_name }} {{ patient.last_name }}</p>
+                        <p><strong>Date of Birth:</strong> {{ patient.date_of_birth.strftime('%Y-%m-%d') }}</p>
+                        <p><strong>Gender:</strong> {{ patient.gender }}</p>
+                        <p><strong>Phone:</strong> {{ patient.phone }}</p>
+                        {% if patient.email %}
+                            <p><strong>Email:</strong> {{ patient.email }}</p>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-6">
+                        {% if patient.address %}
+                            <p><strong>Address:</strong> {{ patient.address }}</p>
+                        {% endif %}
+                        {% if patient.emergency_contact %}
+                            <p><strong>Emergency Contact:</strong> {{ patient.emergency_contact }}</p>
+                        {% endif %}
+                        <p><strong>Registered at:</strong> {{ patient.location.name }}</p>
+                        <p><strong>Registration Date:</strong> {{ patient.created_at.strftime('%Y-%m-%d') }}</p>
+                    </div>
+                </div>
+                
+                <div class="mt-3">
+                    <a href="{{ url_for('add_health_record', patient_id=patient.patient_id) }}" 
+                       class="btn btn-primary me-2">
+                        <i class="fas fa-notes-medical"></i> Add Health Record
+                    </a>
+                    <a href="{{ url_for('collect_blood_sample', patient_id=patient.patient_id) }}" 
+                       class="btn btn-success">
+                        <i class="fas fa-vial"></i> Collect Blood Sample
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Health Records -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5><i class="fas fa-notes-medical"></i> Health Records</h5>
+            </div>
+            <div class="card-body">
+                {% if health_records %}
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Location</th>
+                                    <th>Height</th>
+                                    <th>Weight</th>
+                                    <th>Temperature</th>
+                                    <th>BP</th>
+                                    <th>Heart Rate</th>
+                                    <th>Recorded By</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for record in health_records %}
+                                    <tr>
+                                        <td>{{ record.recorded_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                                        <td>{{ record.location.name }}</td>
+                                        <td>{{ record.height or '-' }}</td>
+                                        <td>{{ record.weight or '-' }}</td>
+                                        <td>{{ record.temperature or '-' }}</td>
+                                        <td>
+                                            {% if record.blood_pressure_systolic and record.blood_pressure_diastolic %}
+                                                {{ record.blood_pressure_systolic }}/{{ record.blood_pressure_diastolic }}
+                                            {% else %}
+                                                -
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ record.heart_rate or '-' }}</td>
+                                        <td>{{ record.recorded_by }}</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <p class="text-muted">No health records available.</p>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Blood Samples -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5><i class="fas fa-vial"></i> Blood Samples</h5>
+            </div>
+            <div class="card-body">
+                {% if blood_samples %}
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Sample ID</th>
+                                    <th>Test Type</th>
+                                    <th>Collection Date</th>
+                                    <th>Status</th>
+                                    <th>Results</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for sample in blood_samples %}
+                                    <tr>
+                                        <td>{{ sample.sample_id }}</td>
+                                        <td>{{ sample.test_type }}</td>
+                                        <td>{{ sample.collected_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                                        <td>
+                                            <span class="badge bg-{% if sample.status == 'collected' %}warning{% elif sample.status == 'tested' %}success{% else %}primary{% endif %}">
+                                                {{ sample.status.replace('_', ' ').title() }}
+                                            </span>
+                                        </td>
+                                        <td>{{ sample.results or '-' }}</td>
+                                        <td>
+                                            {% if sample.status == 'collected' %}
+                                                <a href="{{ url_for('update_test_results', sample_id=sample.sample_id) }}" 
+                                                   class="btn btn-sm btn-primary">Update Results</a>
+                                            {% elif sample.status == 'tested' %}
+                                                <a href="{{ url_for('send_results', sample_id=sample.sample_id) }}" 
+                                                   class="btn btn-sm btn-success">Send Results</a>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <p class="text-muted">No blood samples collected.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <!-- Patient QR Code -->
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-qrcode"></i> Patient QR Code</h5>
+            </div>
+            <div class="card-body text-center">
+                <img src="data:image/png;base64,{{ qr_code }}" class="qr-code img-fluid" alt="Patient QR Code">
+                <p class="mt-2 text-muted">Scan this QR code to quickly access patient information</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

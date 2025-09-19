@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+
+{% block title %}Blood Samples - Patient Demographic System{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-4">
+            <i class="fas fa-vial"></i> Blood Samples
+        </h1>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                {% if samples %}
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Sample ID</th>
+                                    <th>Patient</th>
+                                    <th>Test Type</th>
+                                    <th>Collection Location</th>
+                                    <th>Collection Date</th>
+                                    <th>Status</th>
+                                    <th>Test Location</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for sample in samples %}
+                                    <tr>
+                                        <td>
+                                            <strong>{{ sample.sample_id }}</strong>
+                                        </td>
+                                        <td>
+                                            <a href="{{ url_for('patient_details', patient_id=sample.patient.patient_id) }}">
+                                                {{ sample.patient.first_name }} {{ sample.patient.last_name }}
+                                            </a>
+                                            <br>
+                                            <small class="text-muted">{{ sample.patient.patient_id }}</small>
+                                        </td>
+                                        <td>{{ sample.test_type }}</td>
+                                        <td>{{ sample.collection_location.name }}</td>
+                                        <td>{{ sample.collected_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                                        <td>
+                                            <span class="badge bg-{% if sample.status == 'collected' %}warning{% elif sample.status == 'tested' %}success{% else %}primary{% endif %}">
+                                                {{ sample.status.replace('_', ' ').title() }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            {% if sample.test_location_id %}
+                                                {{ sample.test_location.name }}
+                                            {% else %}
+                                                -
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if sample.status == 'collected' %}
+                                                <a href="{{ url_for('update_test_results', sample_id=sample.sample_id) }}" 
+                                                   class="btn btn-sm btn-primary">
+                                                    <i class="fas fa-edit"></i> Update Results
+                                                </a>
+                                            {% elif sample.status == 'tested' %}
+                                                <a href="{{ url_for('send_results', sample_id=sample.sample_id) }}" 
+                                                   class="btn btn-sm btn-success">
+                                                    <i class="fas fa-share"></i> Send Results
+                                                </a>
+                                            {% else %}
+                                                <span class="badge bg-secondary">Sent</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-vial fa-3x text-muted mb-3"></i>
+                        <h5 class="text-muted">No blood samples collected yet</h5>
+                        <p class="text-muted">Blood samples will appear here once collected from patients</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

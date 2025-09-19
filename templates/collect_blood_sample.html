@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+
+{% block title %}Collect Blood Sample - Patient Demographic System{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-6 mx-auto">
+        <div class="card">
+            <div class="card-header">
+                <h4><i class="fas fa-vial"></i> Collect Blood Sample</h4>
+                <p class="mb-0">Patient: {{ patient.first_name }} {{ patient.last_name }} ({{ patient.patient_id }})</p>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    <div class="mb-3">
+                        <label for="collection_location_id" class="form-label">Collection Location *</label>
+                        <select class="form-select" id="collection_location_id" name="collection_location_id" required>
+                            <option value="">Select Location</option>
+                            {% for location in locations %}
+                                <option value="{{ location.id }}">{{ location.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="test_type" class="form-label">Test Type *</label>
+                        <select class="form-select" id="test_type" name="test_type" required>
+                            <option value="">Select Test Type</option>
+                            <option value="Complete Blood Count (CBC)">Complete Blood Count (CBC)</option>
+                            <option value="Blood Sugar">Blood Sugar</option>
+                            <option value="Cholesterol">Cholesterol</option>
+                            <option value="Liver Function Test">Liver Function Test</option>
+                            <option value="Kidney Function Test">Kidney Function Test</option>
+                            <option value="Thyroid Function Test">Thyroid Function Test</option>
+                            <option value="HIV Test">HIV Test</option>
+                            <option value="Hepatitis Panel">Hepatitis Panel</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="collected_by" class="form-label">Collected By *</label>
+                        <input type="text" class="form-control" id="collected_by" name="collected_by" required 
+                               placeholder="Healthcare provider name">
+                    </div>
+                    
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i>
+                        <strong>Note:</strong> A unique sample ID will be automatically generated upon collection.
+                        The sample will be flagged for testing and can be processed at any location.
+                    </div>
+                    
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <a href="{{ url_for('patient_details', patient_id=patient.patient_id) }}" 
+                           class="btn btn-secondary me-md-2">Cancel</a>
+                        <button type="submit" class="btn btn-success">Collect Sample</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
