@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+
+{% block title %}Update Test Results - Patient Demographic System{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8 mx-auto">
+        <div class="card">
+            <div class="card-header">
+                <h4><i class="fas fa-edit"></i> Update Test Results</h4>
+                <p class="mb-0">Sample ID: {{ sample.sample_id }}</p>
+                <p class="mb-0">Patient: {{ sample.patient.first_name }} {{ sample.patient.last_name }} ({{ sample.patient.patient_id }})</p>
+                <p class="mb-0">Test Type: {{ sample.test_type }}</p>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="test_location_id" class="form-label">Test Location *</label>
+                                <select class="form-select" id="test_location_id" name="test_location_id" required>
+                                    <option value="">Select Location</option>
+                                    {% for location in locations %}
+                                        <option value="{{ location.id }}" 
+                                                {% if sample.test_location_id == location.id %}selected{% endif %}>
+                                            {{ location.name }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="tested_by" class="form-label">Tested By *</label>
+                                <input type="text" class="form-control" id="tested_by" name="tested_by" required 
+                                       placeholder="Lab technician name" value="{{ sample.tested_by or '' }}">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="results" class="form-label">Test Results *</label>
+                        <textarea class="form-control" id="results" name="results" rows="10" required 
+                                  placeholder="Enter detailed test results here...">{{ sample.results or '' }}</textarea>
+                        <div class="form-text">
+                            Include all relevant test values, ranges, and interpretations.
+                        </div>
+                    </div>
+                    
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i>
+                        <strong>Note:</strong> Once results are saved, they can be sent to the patient via WhatsApp.
+                    </div>
+                    
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <a href="{{ url_for('blood_samples') }}" class="btn btn-secondary me-md-2">Cancel</a>
+                        <button type="submit" class="btn btn-primary">Save Results</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

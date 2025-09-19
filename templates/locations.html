@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+
+{% block title %}Locations - Patient Demographic System{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1><i class="fas fa-map-marker-alt"></i> Locations</h1>
+            <a href="{{ url_for('add_location') }}" class="btn btn-primary">
+                <i class="fas fa-plus"></i> Add Location
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                {% if locations %}
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Address</th>
+                                    <th>Phone</th>
+                                    <th>Patients</th>
+                                    <th>Created</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for location in locations %}
+                                    <tr>
+                                        <td>{{ location.name }}</td>
+                                        <td>{{ location.address or '-' }}</td>
+                                        <td>{{ location.phone or '-' }}</td>
+                                        <td>{{ location.patients|length }}</td>
+                                        <td>{{ location.created_at.strftime('%Y-%m-%d') }}</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-map-marker-alt fa-3x text-muted mb-3"></i>
+                        <h5 class="text-muted">No locations added yet</h5>
+                        <p class="text-muted">Add your first healthcare location</p>
+                        <a href="{{ url_for('add_location') }}" class="btn btn-primary">
+                            <i class="fas fa-plus"></i> Add Location
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
