@@ -149,6 +149,18 @@ class DemographicHandler(http.server.SimpleHTTPRequestHandler):
             self.send_search_patient_form()
         elif self.path == '/add_location':
             self.send_add_location_form()
+        elif self.path.startswith('/add_health_record/'):
+            patient_id = self.path.split('/')[-1]
+            self.send_add_health_record_form(patient_id)
+        elif self.path.startswith('/collect_blood_sample/'):
+            patient_id = self.path.split('/')[-1]
+            self.send_collect_blood_sample_form(patient_id)
+        elif self.path.startswith('/update_test_results/'):
+            sample_id = self.path.split('/')[-1]
+            self.send_update_test_results_form(sample_id)
+        elif self.path.startswith('/send_results/'):
+            sample_id = self.path.split('/')[-1]
+            self.handle_send_results(sample_id)
         else:
             self.send_error(404, "Page not found")
     
@@ -170,6 +182,9 @@ class DemographicHandler(http.server.SimpleHTTPRequestHandler):
         elif self.path.startswith('/collect_blood_sample/'):
             patient_id = self.path.split('/')[-1]
             self.handle_collect_blood_sample(patient_id, data)
+        elif self.path.startswith('/update_test_results/'):
+            sample_id = self.path.split('/')[-1]
+            self.handle_update_test_results(sample_id, data)
         else:
             self.send_error(404, "Action not found")
     
@@ -618,7 +633,7 @@ class DemographicHandler(http.server.SimpleHTTPRequestHandler):
                 if sample[8] == 'collected':
                     action = f'<form method="POST" action="/update_test_results/{sample[1]}" style="display:inline;"><button type="submit">Update Results</button></form>'
                 elif sample[8] == 'tested':
-                    action = f'<form method="POST" action="/send_results/{sample[1]}" style="display:inline;"><button type="submit">Send Results</button></form>'
+                    action = f'<a href="/send_results/{sample[1]}" style="background: #28a745; color: white; padding: 5px 10px; text-decoration: none; border-radius: 3px;">Send Results</a>'
                 samples_html += f'<tr><td>{sample[1]}</td><td><a href="/patient/{sample[-2]}">{sample[-4]} {sample[-3]} ({sample[-2]})</a></td><td>{sample[7]}</td><td>{sample[8]}</td><td>{sample[6]}</td><td>{action}</td></tr>'
             samples_html += '</table>'
         else:
@@ -770,6 +785,471 @@ class DemographicHandler(http.server.SimpleHTTPRequestHandler):
             
         except Exception as e:
             self.send_error(500, f"Failed to add location: {str(e)}")
+    
+    def send_add_health_record_form(self, patient_id):
+        """Send add health record form"""
+        conn = sqlite3.connect(DATABASE)
+        cursor = conn.cursor()
+        
+        # Get patient info
+        cursor.execute('SELECT * FROM patients WHERE patient_id = ?', (patient_id,))
+        patient = cursor.fetchone()
+        
+        if not patient:
+            self.send_error(404, "Patient not found")
+            return
+        
+        # Get locations
+        cursor.execute('SELECT id, name FROM locations')
+        locations = cursor.fetchall()
+        conn.close()
+        
+        location_options = ''.join([f'<option value="{loc[0]}">{loc[1]}</option>' for loc in locations])
+        
+        html = f'''
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Add Health Record</title>
+            <style>
+                body {{ font-family: Arial, sans-serif; margin: 20px; }}
+                .form {{ max-width: 600px; margin: 0 auto; }}
+                .field {{ margin: 15px 0; }}
+                label {{ display: block; margin-bottom: 5px; font-weight: bold; }}
+                input, select, textarea {{ width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 3px; }}
+                .btn {{ background: #007bff; color: white; padding: 10px 20px; border: none; border-radius: 3px; cursor: pointer; }}
+                .btn:hover {{ background: #0056b3; }}
+                .nav {{ margin-bottom: 20px; }}
+                .nav a {{ color: #007bff; text-decoration: none; margin-right: 10px; }}
+                .row {{ display: flex; gap: 20px; }}
+                .col {{ flex: 1; }}
+            </style>
+        </head>
+        <body>
+            <div class="nav">
+                <a href="/patient/{patient_id}">← Back to Patient</a>
+            </div>
+            <div class="form">
+                <h2>Add Health Record</h2>
+                <p><strong>Patient:</strong> {patient[2]} {patient[3]} ({patient[1]})</p>
+                <form method="POST" action="/add_health_record/{patient_id}">
+                    <div class="row">
+                        <div class="col">
+                            <div class="field">
+                                <label>Current Location *</label>
+                                <select name="location_id" required>
+                                    <option value="">Select Location</option>
+                                    {location_options}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col">
+                            <div class="field">
+                                <label>Recorded By *</label>
+                                <input type="text" name="recorded_by" required>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col">
+                            <div class="field">
+                                <label>Height (cm)</label>
+                                <input type="number" step="0.1" name="height">
+                            </div>
+                        </div>
+                        <div class="col">
+                            <div class="field">
+                                <label>Weight (kg)</label>
+                                <input type="number" step="0.1" name="weight">
+                            </div>
+                        </div>
+                        <div class="col">
+                            <div class="field">
+                                <label>Temperature (°C)</label>
+                                <input type="number" step="0.1" name="temperature">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col">
+                            <div class="field">
+                                <label>BP Systolic</label>
+                                <input type="number" name="bp_systolic">
+                            </div>
+                        </div>
+                        <div class="col">
+                            <div class="field">
+                                <label>BP Diastolic</label>
+                                <input type="number" name="bp_diastolic">
+                            </div>
+                        </div>
+                        <div class="col">
+                            <div class="field">
+                                <label>Heart Rate (bpm)</label>
+                                <input type="number" name="heart_rate">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="field">
+                        <label>Notes</label>
+                        <textarea name="notes" rows="4"></textarea>
+                    </div>
+                    
+                    <button type="submit" class="btn">Save Health Record</button>
+                </form>
+            </div>
+        </body>
+        </html>
+        '''
+        self.send_html_response(html)
+    
+    def handle_add_health_record(self, patient_id, data):
+        """Handle adding health record"""
+        try:
+            conn = sqlite3.connect(DATABASE)
+            cursor = conn.cursor()
+            
+            # Get patient internal ID
+            cursor.execute('SELECT id FROM patients WHERE patient_id = ?', (patient_id,))
+            patient = cursor.fetchone()
+            
+            if not patient:
+                self.send_error(404, "Patient not found")
+                return
+            
+            cursor.execute('''
+                INSERT INTO health_records 
+                (patient_id, location_id, height, weight, temperature, blood_pressure_systolic, 
+                 blood_pressure_diastolic, heart_rate, notes, recorded_by)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (
+                patient[0],
+                data['location_id'][0],
+                float(data['height'][0]) if data.get('height', [''])[0] else None,
+                float(data['weight'][0]) if data.get('weight', [''])[0] else None,
+                float(data['temperature'][0]) if data.get('temperature', [''])[0] else None,
+                int(data['bp_systolic'][0]) if data.get('bp_systolic', [''])[0] else None,
+                int(data['bp_diastolic'][0]) if data.get('bp_diastolic', [''])[0] else None,
+                int(data['heart_rate'][0]) if data.get('heart_rate', [''])[0] else None,
+                data.get('notes', [''])[0],
+                data['recorded_by'][0]
+            ))
+            conn.commit()
+            conn.close()
+            
+            # Redirect back to patient details
+            self.send_response(302)
+            self.send_header('Location', f'/patient/{patient_id}')
+            self.end_headers()
+            
+        except Exception as e:
+            self.send_error(500, f"Failed to add health record: {str(e)}")
+    
+    def send_collect_blood_sample_form(self, patient_id):
+        """Send collect blood sample form"""
+        conn = sqlite3.connect(DATABASE)
+        cursor = conn.cursor()
+        
+        # Get patient info
+        cursor.execute('SELECT * FROM patients WHERE patient_id = ?', (patient_id,))
+        patient = cursor.fetchone()
+        
+        if not patient:
+            self.send_error(404, "Patient not found")
+            return
+        
+        # Get locations
+        cursor.execute('SELECT id, name FROM locations')
+        locations = cursor.fetchall()
+        conn.close()
+        
+        location_options = ''.join([f'<option value="{loc[0]}">{loc[1]}</option>' for loc in locations])
+        
+        html = f'''
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Collect Blood Sample</title>
+            <style>
+                body {{ font-family: Arial, sans-serif; margin: 20px; }}
+                .form {{ max-width: 500px; margin: 0 auto; }}
+                .field {{ margin: 15px 0; }}
+                label {{ display: block; margin-bottom: 5px; font-weight: bold; }}
+                input, select {{ width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 3px; }}
+                .btn {{ background: #28a745; color: white; padding: 10px 20px; border: none; border-radius: 3px; cursor: pointer; }}
+                .btn:hover {{ background: #218838; }}
+                .nav {{ margin-bottom: 20px; }}
+                .nav a {{ color: #007bff; text-decoration: none; margin-right: 10px; }}
+                .alert {{ background: #d1ecf1; border: 1px solid #bee5eb; padding: 15px; border-radius: 3px; margin: 15px 0; }}
+            </style>
+        </head>
+        <body>
+            <div class="nav">
+                <a href="/patient/{patient_id}">← Back to Patient</a>
+            </div>
+            <div class="form">
+                <h2>Collect Blood Sample</h2>
+                <p><strong>Patient:</strong> {patient[2]} {patient[3]} ({patient[1]})</p>
+                <form method="POST" action="/collect_blood_sample/{patient_id}">
+                    <div class="field">
+                        <label>Collection Location *</label>
+                        <select name="collection_location_id" required>
+                            <option value="">Select Location</option>
+                            {location_options}
+                        </select>
+                    </div>
+                    
+                    <div class="field">
+                        <label>Test Type *</label>
+                        <select name="test_type" required>
+                            <option value="">Select Test Type</option>
+                            <option value="Complete Blood Count (CBC)">Complete Blood Count (CBC)</option>
+                            <option value="Blood Sugar">Blood Sugar</option>
+                            <option value="Cholesterol">Cholesterol</option>
+                            <option value="Liver Function Test">Liver Function Test</option>
+                            <option value="Kidney Function Test">Kidney Function Test</option>
+                            <option value="Thyroid Function Test">Thyroid Function Test</option>
+                            <option value="HIV Test">HIV Test</option>
+                            <option value="Hepatitis Panel">Hepatitis Panel</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                    
+                    <div class="field">
+                        <label>Collected By *</label>
+                        <input type="text" name="collected_by" required>
+                    </div>
+                    
+                    <div class="alert">
+                        <strong>Note:</strong> A unique sample ID will be automatically generated upon collection.
+                        The sample will be flagged for testing and can be processed at any location.
+                    </div>
+                    
+                    <button type="submit" class="btn">Collect Sample</button>
+                </form>
+            </div>
+        </body>
+        </html>
+        '''
+        self.send_html_response(html)
+    
+    def handle_collect_blood_sample(self, patient_id, data):
+        """Handle blood sample collection"""
+        try:
+            conn = sqlite3.connect(DATABASE)
+            cursor = conn.cursor()
+            
+            # Get patient internal ID
+            cursor.execute('SELECT id FROM patients WHERE patient_id = ?', (patient_id,))
+            patient = cursor.fetchone()
+            
+            if not patient:
+                self.send_error(404, "Patient not found")
+                return
+            
+            sample_id = generate_sample_id()
+            
+            cursor.execute('''
+                INSERT INTO blood_samples 
+                (sample_id, patient_id, collection_location_id, test_type, collected_by, status)
+                VALUES (?, ?, ?, ?, ?, 'collected')
+            ''', (
+                sample_id,
+                patient[0],
+                data['collection_location_id'][0],
+                data['test_type'][0],
+                data['collected_by'][0]
+            ))
+            conn.commit()
+            conn.close()
+            
+            # Redirect back to patient details
+            self.send_response(302)
+            self.send_header('Location', f'/patient/{patient_id}')
+            self.end_headers()
+            
+        except Exception as e:
+            self.send_error(500, f"Failed to collect blood sample: {str(e)}")
+    
+    def send_update_test_results_form(self, sample_id):
+        """Send update test results form"""
+        conn = sqlite3.connect(DATABASE)
+        cursor = conn.cursor()
+        
+        # Get sample info
+        cursor.execute('''
+            SELECT bs.*, p.first_name, p.last_name, p.patient_id 
+            FROM blood_samples bs
+            JOIN patients p ON bs.patient_id = p.id
+            WHERE bs.sample_id = ?
+        ''', (sample_id,))
+        sample = cursor.fetchone()
+        
+        if not sample:
+            self.send_error(404, "Sample not found")
+            return
+        
+        # Get locations
+        cursor.execute('SELECT id, name FROM locations')
+        locations = cursor.fetchall()
+        conn.close()
+        
+        location_options = ''.join([f'<option value="{loc[0]}">{loc[1]}</option>' for loc in locations])
+        
+        html = f'''
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Update Test Results</title>
+            <style>
+                body {{ font-family: Arial, sans-serif; margin: 20px; }}
+                .form {{ max-width: 600px; margin: 0 auto; }}
+                .field {{ margin: 15px 0; }}
+                label {{ display: block; margin-bottom: 5px; font-weight: bold; }}
+                input, select, textarea {{ width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 3px; }}
+                .btn {{ background: #007bff; color: white; padding: 10px 20px; border: none; border-radius: 3px; cursor: pointer; }}
+                .btn:hover {{ background: #0056b3; }}
+                .nav {{ margin-bottom: 20px; }}
+                .nav a {{ color: #007bff; text-decoration: none; margin-right: 10px; }}
+                .row {{ display: flex; gap: 20px; }}
+                .col {{ flex: 1; }}
+                .alert {{ background: #d1ecf1; border: 1px solid #bee5eb; padding: 15px; border-radius: 3px; margin: 15px 0; }}
+            </style>
+        </head>
+        <body>
+            <div class="nav">
+                <a href="/blood_samples">← Back to Blood Samples</a>
+            </div>
+            <div class="form">
+                <h2>Update Test Results</h2>
+                <p><strong>Sample ID:</strong> {sample[1]}</p>
+                <p><strong>Patient:</strong> {sample[-3]} {sample[-2]} ({sample[-1]})</p>
+                <p><strong>Test Type:</strong> {sample[7]}</p>
+                <form method="POST" action="/update_test_results/{sample_id}">
+                    <div class="row">
+                        <div class="col">
+                            <div class="field">
+                                <label>Test Location *</label>
+                                <select name="test_location_id" required>
+                                    <option value="">Select Location</option>
+                                    {location_options}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col">
+                            <div class="field">
+                                <label>Tested By *</label>
+                                <input type="text" name="tested_by" required value="{sample[10] or ''}">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="field">
+                        <label>Test Results *</label>
+                        <textarea name="results" rows="10" required>{sample[9] or ''}</textarea>
+                    </div>
+                    
+                    <div class="alert">
+                        <strong>Note:</strong> Once results are saved, they can be sent to the patient via WhatsApp.
+                    </div>
+                    
+                    <button type="submit" class="btn">Save Results</button>
+                </form>
+            </div>
+        </body>
+        </html>
+        '''
+        self.send_html_response(html)
+    
+    def handle_update_test_results(self, sample_id, data):
+        """Handle updating test results"""
+        try:
+            conn = sqlite3.connect(DATABASE)
+            cursor = conn.cursor()
+            
+            cursor.execute('''
+                UPDATE blood_samples 
+                SET test_location_id = ?, results = ?, tested_by = ?, 
+                    tested_at = CURRENT_TIMESTAMP, status = 'tested'
+                WHERE sample_id = ?
+            ''', (
+                data['test_location_id'][0],
+                data['results'][0],
+                data['tested_by'][0],
+                sample_id
+            ))
+            conn.commit()
+            conn.close()
+            
+            # Redirect back to blood samples
+            self.send_response(302)
+            self.send_header('Location', '/blood_samples')
+            self.end_headers()
+            
+        except Exception as e:
+            self.send_error(500, f"Failed to update test results: {str(e)}")
+    
+    def handle_send_results(self, sample_id):
+        """Handle sending test results via WhatsApp"""
+        try:
+            conn = sqlite3.connect(DATABASE)
+            cursor = conn.cursor()
+            
+            # Get sample and patient info
+            cursor.execute('''
+                SELECT bs.*, p.first_name, p.last_name, p.patient_id, p.phone 
+                FROM blood_samples bs
+                JOIN patients p ON bs.patient_id = p.id
+                WHERE bs.sample_id = ? AND bs.status = 'tested'
+            ''', (sample_id,))
+            sample = cursor.fetchone()
+            
+            if not sample:
+                self.send_error(404, "Sample not found or not tested")
+                return
+            
+            # Format WhatsApp message
+            message = f"""
+🏥 MEDICAL TEST RESULTS 🏥
+
+Patient: {sample[-4]} {sample[-3]}
+Patient ID: {sample[-2]}
+Sample ID: {sample[1]}
+Test Type: {sample[7]}
+
+Results:
+{sample[9]}
+
+Tested by: {sample[10]}
+Test Date: {sample[11]}
+
+For questions, please contact your healthcare provider.
+            """
+            
+            # Simulate WhatsApp sending
+            success = simulate_whatsapp_send(sample[-1], message)
+            
+            if success:
+                # Update status to results_sent
+                cursor.execute('''
+                    UPDATE blood_samples 
+                    SET status = 'results_sent', results_sent_at = CURRENT_TIMESTAMP
+                    WHERE sample_id = ?
+                ''', (sample_id,))
+                conn.commit()
+            
+            conn.close()
+            
+            # Redirect back to blood samples with success message
+            self.send_response(302)
+            self.send_header('Location', '/blood_samples')
+            self.end_headers()
+            
+        except Exception as e:
+            self.send_error(500, f"Failed to send results: {str(e)}")
 
 # Additional handler methods would go here...
 
